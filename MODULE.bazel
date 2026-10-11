@@ -1,0 +1,76 @@
+bazel_dep(name = "rules_multitool", version = "1.11.1")
+bazel_dep(name = "bazel_env.bzl", version = "0.7.2")
+bazel_dep(name = "bazelrc-preset.bzl", version = "1.9.2")
+
+# buildifier (Starlark formatter) is always available — the `aspect buildifier`
+# task and the format.alias in .aspect/config.axl use it regardless of lint.
+bazel_dep(name = "buildifier_prebuilt", version = "8.5.1.2")
+
+# Prebuilt aspect gazelle binary (no Go toolchain needed) — provides
+# //tools/gazelle:gazelle, the default target for `aspect gazelle`.
+bazel_dep(name = "aspect_gazelle_prebuilt", version = "0.0.20")
+
+# NB: 2.7.0's sarif_parser toolchain is missing the linux_amd64 platform key
+# (breaks lint/format on Linux CI: "key sarif_parser-linux_amd64 not found").
+# Stay on 2.6.0 until that's fixed upstream.
+bazel_dep(name = "aspect_rules_lint", version = "2.7.1")
+
+# bazel_skylib's native_binary backs //tools/lint's linter wrappers.
+bazel_dep(name = "bazel_skylib", version = "1.9.0")
+
+# go preset uses rules_go directly; the lint preset needs this floor too because
+# aspect_rules_lint -> rules_buf transitively pulls an ancient rules_go (0.42.0)
+# whose cgo.bzl references the removed CcInfo symbol and fails to load.
+bazel_dep(name = "rules_go", version = "0.61.1")
+bazel_dep(name = "rules_java", version = "9.6.1")
+bazel_dep(name = "rules_jvm_external", version = "7.0")
+bazel_dep(name = "rules_kotlin", version = "2.3.20")
+
+# Force a transitive resolution of rules_android to pick up Bazel 9 fixes
+bazel_dep(name = "rules_android", version = "0.7.3")
+
+###############################################################################
+# Module extensions
+###############################################################################
+
+multitool = use_extension("@rules_multitool//multitool:extension.bzl", "multitool")
+multitool.hub(lockfile = "//tools:tools.lock.json")
+use_repo(multitool, "multitool")
+
+#########################
+# Kotlin
+# JUnit 4 for the kt_jvm_test example under //hello/kotlin. Fetched directly as
+# jars so the starter needs no Maven lockfile.
+junit_http_jar = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_jar")
+
+junit_http_jar(
+    name = "junit_junit",
+    integrity = "sha256-jklbY0Rp1k+4rPo0laBly6zIoP/1XOHjEAe+TBbcV9M=",
+    url = "https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar",
+)
+
+junit_http_jar(
+    name = "org_hamcrest_hamcrest_core",
+    integrity = "sha256-Zv3vkelzk0jfeglqo4SlaF9Oh1WEzOiThqekclHE2Ok=",
+    url = "https://repo1.maven.org/maven2/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar",
+)
+
+# ktfmt + ktlint for //tools/format and the Kotlin lint aspect.
+http_jar = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_jar")
+
+http_jar(
+    name = "ktfmt",
+    integrity = "sha256-l/x/vRlNAan6RdgUfAVSQDAD1VusSridhNe7TV4/SN4=",
+    url = "https://repo1.maven.org/maven2/com/facebook/ktfmt/0.46/ktfmt-0.46-jar-with-dependencies.jar",
+)
+
+http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+
+http_file(
+    name = "com_github_pinterest_ktlint",
+    executable = True,
+    sha256 = "2e28cf46c27d38076bf63beeba0bdef6a845688d6c5dccd26505ce876094eb92",
+    url = "https://github.com/pinterest/ktlint/releases/download/1.2.1/ktlint",
+)
+
+register_toolchains("//bazel/toolchains:all")
